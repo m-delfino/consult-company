@@ -38,6 +38,8 @@
   :group 'company
   :group 'consult)
 
+(defcustom consult-company-debounce-time 0.2 "Debounce time for preview function" :type 'number)
+
 (defcustom consult-company-narrow
   `((color ?# . "Color")
     ((file folder) ?f . "Files")
@@ -82,6 +84,21 @@ is non-nil."
   :type 'boolean)
 
 
+
+(defun consult-company--debounce (orig-fn timeout)
+  (let ((debounce-timer))
+    (lambda (&rest args)
+      (if (timerp debounce-timer)
+          (cancel-timer debounce-timer))
+      (prog1 nil
+        (setq debounce-timer
+              (run-with-idle-timer
+               timeout nil
+               (lambda (buf)
+                 (setq debounce-timer nil)
+                 (with-current-buffer buf
+                   (apply orig-fn args)))
+               (current-buffer)))))))
 
 (defun consult-company--candidates ()
   "Retrieve a list of candidates for `consult-company'."
@@ -139,7 +156,8 @@ quitting."
          (when consult-company-preview-split-window
            (current-window-configuration)))
         split-window)
-    (lambda (action cand)
+    (consult-company--debounce
+     (lambda (action cand)
       (let ((location (funcall location-processor cand)))
         ;; Create a split if previews should be in a split.
         (when (and location
@@ -162,7 +180,8 @@ quitting."
         (when (and split-window (eq action 'return))
           (ignore-errors
             (set-window-configuration window-configuration))
-          (setq split-window nil))))))
+          (setq split-window nil))))
+     consult-company-debounce-time)))
 
 (defun consult-company--candidate-location (orig-buffer cand)
   "Map a `company' CAND to its location.
@@ -255,8 +274,8 @@ generated."
           :annotate
           (lambda (cand)
             (when-let* ((company-cand (consult--lookup-cdr cand cands))
-                        (company-doc (with-current-buffer original-buffer
-                                       (company-call-backend 'doc-buffer company-cand)))
+                        ;; (company-doc (with-current-buffer original-buffer
+                        ;;                (company-call-backend 'doc-buffer company-cand)))
                         (annotation
                          (with-current-buffer original-buffer
                            (company-call-backend 'annotation company-cand)))
