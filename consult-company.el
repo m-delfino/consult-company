@@ -177,7 +177,8 @@ quitting."
                  t)))
         ;; Invoke preview action in the correct window.
         (with-selected-window (or split-window (selected-window))
-          (funcall preview action location)
+          ;; FIXME call location again, useful for adjusting doc to window width
+          (funcall preview action (funcall location-processor cand))
           (when (and location (eq action 'return))
             (funcall preview-action location)))
         ;; Restore the original window configuration.
