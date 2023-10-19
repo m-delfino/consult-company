@@ -108,7 +108,11 @@ is non-nil."
            ;; stripped.
            with ix = 0 do (setq ix (1+ ix))
            with cand-str = nil
-           do (setq cand-str (consult--tofu-append (substring-no-properties cand) ix))
+           ;; FIXME: candidate description not available before calling lsp doc
+           ;; calling it for each cand might be a huge performance bottleneck,
+           ;; let's see
+           do (progn (company-call-backend 'doc-buffer cand)
+                     (setq cand-str (consult--tofu-append (substring-no-properties cand) ix)))
            ;; Assign the backend for candidate, defaults to capf for unknown backends.
            with backend = nil
            do (setq backend
@@ -274,8 +278,6 @@ generated."
           :annotate
           (lambda (cand)
             (when-let* ((company-cand (consult--lookup-cdr cand cands))
-                        ;; (company-doc (with-current-buffer original-buffer
-                        ;;                (company-call-backend 'doc-buffer company-cand)))
                         (annotation
                          (with-current-buffer original-buffer
                            (company-call-backend 'annotation company-cand)))
