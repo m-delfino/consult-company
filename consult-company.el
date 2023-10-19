@@ -86,19 +86,19 @@ is non-nil."
 
 
 (defun consult-company--debounce (orig-fn timeout)
-  (let ((debounce-timer))
-    (lambda (&rest args)
-      (if (timerp debounce-timer)
-          (cancel-timer debounce-timer))
-      (prog1 nil
-        (setq debounce-timer
-              (run-with-idle-timer
-               timeout nil
-               (lambda (buf)
-                 (setq debounce-timer nil)
-                 (with-current-buffer buf
-                   (apply orig-fn args)))
-               (current-buffer)))))))
+  (setq-local consult-company-debounce-timer nil)
+  (lambda (&rest args)
+    (if (timerp consult-company-debounce-timer)
+        (cancel-timer consult-company-debounce-timer))
+    (prog1 nil
+      (setq consult-company-debounce-timer
+            (run-with-idle-timer
+             timeout nil
+             (lambda (buf)
+               (setq consult-company-debounce-timer nil)
+               (with-current-buffer buf
+                 (apply orig-fn args)))
+             (current-buffer))))))
 
 (defun consult-company--candidates ()
   "Retrieve a list of candidates for `consult-company'."
@@ -288,6 +288,7 @@ generated."
           (when consult-company-preview-function
             (funcall consult-company-preview-function original-buffer))))
       (when cancel-after-finish
+        (cancel-timer consult-company-debounce-timer)
         (company-abort)))))
 
 (provide 'consult-company)
